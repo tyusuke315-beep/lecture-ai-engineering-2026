@@ -77,3 +77,57 @@ def get_lecture_summary(lecture: int) -> str:
         available = sorted(p.stem for p in (DATA_DIR / "lectures").glob("*.md"))
         return f"第{lecture}回の要点はまだありません。用意されている回: {', '.join(available)}"
     return path.read_text(encoding="utf-8")
+
+
+
+
+import random
+
+def make_quiz(lecture: int) -> str:
+    """指定した回の用語から1つを選び、確認問題と答えを返す。
+
+    「第2回の確認問題を出して」のように、
+    復習用の問題を求められたときに使う。lecture は1始まりの整数。
+    """
+    # 1. load_glossary() から lecture が一致する用語を集める
+    terms = [e for e in load_glossary() if e["lecture"] == lecture]
+    if not terms:
+        return f"第{lecture}回の用語は用語集にありません。"
+
+    # 2. 1つ選ぶ
+    entry = random.choice(terms)
+
+    # 3. 問題と答えを文字列で返す
+    return json.dumps(
+        {
+            "question": f"「{entry['term']}」とは何ですか?",
+            "answer": entry["definition"],
+        },
+        ensure_ascii=False,
+    )
+
+
+
+
+from datetime import datetime  # ファイル先頭の import に追加
+
+LOG_DIR = Path(__file__).resolve().parent.parent / "learning_log"
+
+
+def save_learning_log(title: str, content: str) -> str:
+    """学習の記録を learning_log/ フォルダにファイルとして保存する。
+
+    ユーザーが「今日の学習を記録して」「メモを残して」のように
+    保存を頼んだときだけ使う。勝手に保存してはいけない。
+    title は短い題名、content は学んだ内容の要約（Markdown可）。
+    保存は取り消しにくいので、実行前にユーザーの承認が入る。
+    """
+    LOG_DIR.mkdir(exist_ok=True)
+    now = datetime.now()
+    # ファイル名はモデルに決めさせず、こちらで作る（変なパスを書かれないように）
+    path = LOG_DIR / f"{now:%Y%m%d_%H%M%S}.md"
+    path.write_text(
+        f"# {title}\n\n記録日時: {now:%Y-%m-%d %H:%M}\n\n{content}\n",
+        encoding="utf-8",
+    )
+    return f"{path.name} に保存しました。"
